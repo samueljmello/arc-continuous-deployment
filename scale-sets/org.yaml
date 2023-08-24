@@ -1,0 +1,6 @@
+# the config URL defines how the scale set will be scoped
+githubConfigUrl: https://github.com/my-organization
+maxRunners: 16
+minRunners: 1
+# when providing the runnerGroup, it must first exist in GitHub
+runnerGroup: customRunnerGroup

@@ -1,0 +1,14 @@
+# the config URL defines how the scale set will be scoped
+# Enterprise scoping requires the /enterprises/ URL segment
+githubConfigUrl: https://github.com/enterprises/my-enterprise
+maxRunners: 16
+minRunners: 1
+template:
+  spec:
+    containers:
+    - name: runner
+      image: <acr-name>.azurecr.io/<image-name>:<image-tag>
+      command: ["/home/runner/run.sh"]
+    # can remove lines 13 + 14 if AKS is using managed identity to pull images from ACR
+    imagePullSecrets:
+    - name: regcred

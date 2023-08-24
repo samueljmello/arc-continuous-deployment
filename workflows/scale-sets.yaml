@@ -1,0 +1,43 @@
+# Modify and use this workflow to suit your neds. Add a new job for each additional scale set
+name: Deploy ARC Scale Sets
+on:
+  push:
+    branches: main
+    paths:
+    - .github/workflows/scale-set.yaml
+    - .github/workflows/scale-sets.yaml
+    - scale-sets/**.yaml
+  workflow_dispatch:
+jobs:
+  deploy-org:
+    name: Deploy Org Runners
+    uses: ./.github/workflows/scale-set.yaml
+    with:
+      name: org-runners
+      config-path: scale-sets/org.yaml
+      use-github-app: true
+      create-acr-secret: false
+    secrets:
+      APP_ID: ${{ secrets.APP_ID }}
+      APP_INSTALL_ID: ${{ secrets.APP_INSTALL_ID }}
+      APP_PRIVATE_KEY: ${{ secrets.APP_PRIVATE_KEY }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+  deploy-ent:
+    name: Deploy Enterprise Runners
+    uses: ./.github/workflows/scale-set.yaml
+    with:
+      name: ent-runners
+      config-path: scale-sets/enterprise.yaml
+      use-github-app: false
+      create-acr-secret: true
+    secrets:
+      CUSTOM_PAT: ${{ secrets.CUSTOM_PAT }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SUBSCRIPTION_ID: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      REGISTRY_LOGIN_SERVER: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+      

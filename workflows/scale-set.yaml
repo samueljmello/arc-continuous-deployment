@@ -1,0 +1,106 @@
+name: Deploy Scale Set Template
+on:
+  workflow_call:
+    inputs:
+      name: 
+        required: true
+        type: string
+        description: Will be used as the AKS namespace for the scale set AND the name of the helm chart.
+      config-path:
+        required: true
+        type: string
+        description: The config file (typically stored under ./scale-sets)
+      use-github-app:
+        type: boolean
+        description: Whether to use a GitHub App for authentication (requires specific SECRETS on the repo) or not.
+      create-acr-secret:
+        type: boolean
+        description: Whether to create the ACR secret for AKS cluster (not required when AKS managed identity has pull permissions to the cluster)
+    secrets:
+      APP_ID:
+      APP_INSTALL_ID:
+      APP_PRIVATE_KEY:
+      CUSTOM_PAT:
+      REGISTRY_LOGIN_SERVER:
+      AZURE_CLIENT_ID:
+        required: true
+      AZURE_CLIENT_SECRET:
+        required: true
+      AZURE_SUBSCRIPTION_ID:
+        required: true
+      AZURE_TENANT_ID:
+        required: true
+
+jobs:
+  deploy:
+    name: Process Scale Set
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Checkout Source
+      uses: actions/checkout@v3
+
+    - name: Validate Config File
+      run: |
+        if [ ! -f ${{ inputs.config-path }} ]; then
+          echo "Can't find config file ${{ inputs.config-path }}"
+          exit 1;
+        fi
+
+    - name: Authenticate to AZ
+      uses: azure/login@v1
+      with:
+        creds: '{"clientId":"${{ secrets.AZURE_CLIENT_ID }}","clientSecret":"${{ secrets.AZURE_CLIENT_SECRET }}","subscriptionId":"${{ secrets.AZURE_SUBSCRIPTION_ID }}","tenantId":"${{ secrets.AZURE_TENANT_ID }}"}'
+
+    - name: Set up AKS Connection
+      run: az aks get-credentials --resource-group arc --name arc-poc
+
+    - name: Validate ARC Exists
+      run: |
+        if [ -z "$(helm list -A | tail -n +2 | grep 'gha-runner-scale-set-controller')" ]; then
+          echo "ARC Not Installed. Please run the 'Continuously Deploy ARC' workflow."
+          exit 1;
+        fi
+
+    - name: Create Namespace
+      run: |
+        kubectl create ns "${{ inputs.name }}" \
+          --save-config \
+          --dry-run=client \
+          -o yaml \
+        | kubectl apply -f -
+
+    - name: Create/Update GitHub App Secret
+      if: ${{ inputs.use-github-app }}
+      run: |
+        kubectl create secret generic "${{ inputs.name }}-secret" \
+          --save-config \
+          --dry-run=client \
+          --namespace="${{ inputs.name }}" \
+          --from-literal=github_app_id="${{ secrets.APP_ID }}" \
+          --from-literal=github_app_installation_id="${{ secrets.APP_INSTALL_ID }}" \
+          --from-literal=github_app_private_key="${{ secrets.APP_PRIVATE_KEY }}" \
+          -o yaml \
+        | kubectl apply -f -
+
+    - name: Create/Update ACR Secret
+      if: ${{ inputs.create-acr-secret }}
+      run: |
+        kubectl create secret docker-registry regcred \
+          --save-config \
+          --dry-run=client \
+          --namespace "${{ inputs.name }}" \
+          --docker-server="${{ secrets.REGISTRY_LOGIN_SERVER }}" \
+          --docker-username="${{ secrets.AZURE_CLIENT_ID }}" \
+          --docker-password="${{ secrets.AZURE_CLIENT_SECRET }}" \
+          -o yaml \
+        | kubectl apply -f -
+
+    - name: Run Helm Upgrade
+      run: |
+        helm upgrade "${{ inputs.name }}-scale-set" \
+          --install \
+          --namespace "${{ inputs.name }}" \
+          --values "${{ inputs.config-path }}" \
+          --set ${{ inputs.use-github-app && format('githubConfigSecret="{0}-secret"', inputs.name) || format('githubConfigSecret.github_token="{0}"', secrets.CUSTOM_PAT) }} \
+          oci://ghcr.io/actions/actions-runner-controller-charts/gha-runner-scale-set
