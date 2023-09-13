@@ -34,7 +34,7 @@ Future updates planned:
   (I have them here so that my repo doesn't attempt to run them)
 1. Run `controller.yaml` to make sure the ARC controller is present
 2. Modify `./.github/workflows/scale-sets.yaml` to fit your needs, and be sure to add the corresponding values config YAML file overrides to the `./scale-sets/` directory (two included).
-1. If using a custom image in ACR, make sure to update & run your `./Dockerfile` and `/customer-runner-image.yaml` workflow accordingly. Additionally, any values override files that use the image will need the corrected values (see ``./scale-sets/enterprise.yaml` for example).
+1. If using a custom image in ACR, make sure to update & run your `./Dockerfile` and `/customer-runner-image.yaml` workflow accordingly. Additionally, any values override files that use the image will need the corrected values (see `./scale-sets/enterprise.yaml` for example).
 
 ## Supportive Documentation
 - [Quickstart for ARC](https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller/quickstart-for-actions-runner-controller)
